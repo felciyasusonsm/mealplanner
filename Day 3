@@ -1,0 +1,88 @@
+# streamlit_project_tracker.py
+
+import streamlit as st
+import pandas as pd
+import datetime
+import uuid
+
+st.set_page_config(page_title="Project Management Tracker", layout="wide")
+
+# Initialize session state
+if "tasks" not in st.session_state:
+    st.session_state.tasks = pd.DataFrame(columns=[
+        "Task ID", "Project", "Assigned To", "Role", "Task", "Status", "Due Date"
+    ])
+
+roles = ["Project Manager", "Team Member"]
+status_options = ["To Do", "In Progress", "Done"]
+
+# Sidebar Navigation
+st.sidebar.title("📁 Project Management")
+page = st.sidebar.radio("Navigate", ["Dashboard", "Add Task", "Task Overview"])
+
+# Page: Dashboard
+if page == "Dashboard":
+    st.title("📊 Project Dashboard")
+    task_df = st.session_state.tasks
+
+    if task_df.empty:
+        st.info("No tasks available. Please add tasks from the 'Add Task' section.")
+    else:
+        status_counts = task_df["Status"].value_counts().reindex(status_options, fill_value=0)
+        st.subheader("Task Status Overview")
+        st.bar_chart(status_counts)
+
+        st.subheader("Team Member Task Distribution")
+        member_tasks = task_df["Assigned To"].value_counts()
+        st.bar_chart(member_tasks)
+
+# Page: Add Task
+elif page == "Add Task":
+    st.title("➕ Add New Task")
+    with st.form("add_task_form"):
+        project = st.text_input("Project Name")
+        assigned_to = st.text_input("Assign To (Name)")
+        role = st.selectbox("Role", roles)
+        task_desc = st.text_area("Task Description")
+        status = st.selectbox("Status", status_options)
+        due_date = st.date_input("Due Date", min_value=datetime.date.today())
+        submitted = st.form_submit_button("Add Task")
+
+        if submitted:
+            task_id = str(uuid.uuid4())[:8]
+            new_task = {
+                "Task ID": task_id,
+                "Project": project,
+                "Assigned To": assigned_to,
+                "Role": role,
+                "Task": task_desc,
+                "Status": status,
+                "Due Date": due_date
+            }
+            st.session_state.tasks = pd.concat([
+                st.session_state.tasks,
+                pd.DataFrame([new_task])
+            ], ignore_index=True)
+            st.success("✅ Task added successfully!")
+
+# Page: Task Overview
+elif page == "Task Overview":
+    st.title("📋 Task Overview")
+    task_df = st.session_state.tasks
+
+    if task_df.empty:
+        st.warning("No tasks to display.")
+    else:
+        selected_role = st.selectbox("Filter by Role", ["All"] + roles)
+        selected_status = st.selectbox("Filter by Status", ["All"] + status_options)
+
+        filtered_df = task_df.copy()
+        if selected_role != "All":
+            filtered_df = filtered_df[filtered_df["Role"] == selected_role]
+        if selected_status != "All":
+            filtered_df = filtered_df[filtered_df["Status"] == selected_status]
+
+        st.dataframe(filtered_df.reset_index(drop=True), use_container_width=True)
+
+        with st.expander("📤 Export Tasks"):
+            st.download_button("Download as CSV", filtered_df.to_csv(index=False), "tasks.csv", "text/csv")
