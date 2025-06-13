@@ -1,0 +1,215 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c2dd74be-9d5c-46ca-a760-6effcd70d7f6",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        0
+      ],
+      "id": "23a4179c-66ed-4850-b7ef-45e480e21fba",
+      "name": "Gmail",
+      "webhookId": "a91f53c5-fabd-49cd-8a72-27ea9eb41e3c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3aSRhpSFAhP1dnsx",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get required data from previous node\nconst startDate = new Date($json[\"startDate\"]);\nconst endDate = new Date($json[\"endDate\"]);\nconst leaveType = $json[\"leaveType\"];\nconst availableBalance = $json[`${leaveType} Leave Balance`]; // e.g., \"Sick Leave Balance\"\n\n// Calculate number of leave days requested\nconst requestedDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;\n\n// Determine approval\nlet status = \"Rejected\";\nif (requestedDays <= availableBalance) {\n  status = \"Approved\";\n}\n\n// Return result for next nodes\nreturn [\n  {\n    json: {\n      employeeName: $json[\"employeeName\"],\n      leaveType,\n      startDate: $json[\"startDate\"],\n      endDate: $json[\"endDate\"],\n      requestedDays,\n      availableBalance,\n      status\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "id": "420a7d6d-2153-433e-9d13-ff9daaf152e6",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "sendTo": "felciyasuson@gmail.com",
+        "subject": "disapproved leave",
+        "emailType": "text",
+        "message": "Your leave is not approved due to less earned leave",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        -40
+      ],
+      "id": "af06ed94-a17a-43e6-8d98-dcdb5b23323d",
+      "name": "Gmail1",
+      "webhookId": "b9a6eaaa-be94-459f-976c-4f2ad29b949c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3aSRhpSFAhP1dnsx",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "aeba0b33-8d94-4882-9342-c0d0a9ac5c73",
+              "leftValue": "Approval above 5 earned leave balance",
+              "rightValue": "Disapprove 5 and below 5 earned leave balance",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        -20
+      ],
+      "id": "1c1dc4f0-ae35-4d05-a453-9ddb83c58dbb",
+      "name": "conditional statement"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1OdLT_WpLnkhrRRYjORZ3-jqdF-xlsZTB8mI5n__D1bA/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1OdLT_WpLnkhrRRYjORZ3-jqdF-xlsZTB8mI5n__D1bA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        480,
+        0
+      ],
+      "id": "cda5d925-fc8f-48fd-97fe-300b53f81a34",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QibovPH3ZQkCKv21",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "conditional statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "conditional statement": {
+      "main": [
+        [
+          {
+            "node": "Gmail1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b024759f-a25a-426e-8010-d04b95f7ca6c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7b3f421454c292e78da4447ce07b6cd537930ccb0a0143ab6ccccb41a11c88d7"
+  },
+  "id": "HVjXWWZl6BywDQlu",
+  "tags": []
+}
